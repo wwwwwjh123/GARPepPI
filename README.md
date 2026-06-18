@@ -1,6 +1,6 @@
 # GARPepPI
 
-**A dual-branch multimodal collaborative learning framework for PepPI prediction**
+**Graph Attention Residual Peptide-Protein Interaction Predictor**
 
 ---
 
@@ -41,12 +41,27 @@ pip install numpy pandas scipy openpyxl xlwt selfies scikit-learn transformers
 
 ## Data Preparation
 
-Each dataset should contain two files:
+### Required Input Files
 
-| File | Format | Example |
-|---|---|---|
-| `{name}.dictionary.tsv` | `ID\tsequence` | `1a1m_A\tMKTVRQERLK...` |
-| `{name}.actions.{pos}-{neg}.tsv` | `ID1\tID2\tlabel` | `1a1m_A\t1a1m_C\t1` |
+Prepare the following three types of files:
+
+1. **`actions_file`** — interaction pairs in TSV format:
+   ```
+   protein_id\tpeptide_id\tlabel
+   ```
+   `label`: `1` = interacting, `0` = non-interacting.
+
+2. **PDB files** — one `.pdb` file per protein and peptide, containing the 3D structure.
+
+3. **FASTA file** — all protein and peptide sequences in one file:
+   ```
+   >protein_id_1
+   MKTVRQERLKSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTK...
+   >protein_id_2
+   AXXX
+   >peptide_id_1
+   SIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKG...
+   ```
 
 ### Step 1 — Generate ProtT5 Embeddings
 
@@ -58,23 +73,23 @@ https://huggingface.co/Rostlab/prot_t5_xl_half_uniref50-enc/tree/main
 
 Download all files (`config.json`, `pytorch_model.bin`, `special_tokens_map.json`, `spiece.model`, `tokenizer_config.json`) into `2_preprocessing/prot_t5_xl_half_uniref50-enc/`.
 
-Then edit the FASTA path in `2_preprocessing/generate_embeddings.py` and run:
+Edit the FASTA path in `2_preprocessing/generate_embeddings.py` and run:
 
 ```bash
 python 2_preprocessing/generate_embeddings.py
 ```
 
-Output: `embeddings/{name}_embeddings.npz` (shape `L × 1024` per entry)
+Output: `embeddings/{name}_embeddings.npz`
 
 ### Step 2 — Generate Contact Maps
 
-Edit the PDB file paths in `2_preprocessing/generate_contact_map.py` and run:
+Edit the PDB file directory path in `2_preprocessing/generate_contact_map.py` and run:
 
 ```bash
 python 2_preprocessing/generate_contact_map.py
 ```
 
-Output: `contact_map/{name}_contact_map/*.npz` (shape `L × L` per entry)
+Output: `contact_map/{name}_contact_map/*.npz`, one `.npz` file per protein/peptide.
 
 ---
 
@@ -109,15 +124,9 @@ The best model for each fold (highest validation accuracy) is saved to `model_pk
 
 ## Input & Output
 
-### Input Format
-
-| Field | Description |
-|---|---|
-| receptor | Protein ID (must exist in embeddings and contact map) |
-| peptide | Peptide ID |
-| label | `1` = interacting, `0` = non-interacting |
-
 ### Output Format
+
+Per-fold test predictions are exported as `.xls` files with the following columns:
 
 | Field | Description |
 |---|---|

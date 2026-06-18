@@ -9,7 +9,7 @@ Predicts protein-peptide interaction probability using ProtT5 embeddings, contac
 ## Directory Structure
 
 ```
-TPepPro/
+GARPepPI/
 ├── 1_database/               # Raw data for each dataset
 │   ├── Human/
 │   ├── Propedia-PPB/

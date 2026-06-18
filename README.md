@@ -1,6 +1,6 @@
 # GARPepPI
 
-**Graph Attention Residual Peptide-Protein Interaction Predictor**
+**A dual-branch multimodal collaborative learning framework for PepPI prediction**
 
 ---
 
@@ -138,9 +138,3 @@ Per-fold test predictions are exported as `.xls` files with the following column
 | predict_label | Prediction (`1` if score ≥ 0.5) |
 
 ---
-
-## Citation
-
-```
-TODO: add your paper citation here
-```

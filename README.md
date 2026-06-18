@@ -1,90 +1,76 @@
-# GARPepPI
+# TPepPro
 
-**Transformer-based Protein-Peptide Interaction Prediction**
+**GARPepPI: Graph Attention Residual Peptide-Protein Interaction Predictor**
 
-Predicts protein-peptide interaction probability using ProtT5 embeddings, contact maps, graph attention (TAGConv), and TextCNN.
-
----
-
-## Directory Structure
-
-```
-GARPepPI/
-├── 1_database/               # Raw data for each dataset
-│   ├── Human/
-│   ├── Propedia-PPB/
-│   ├── SARS-CoV-2-human/
-│   └── Yeast/
-├── 2_preprocessing/          # Data preprocessing scripts
-│   ├── data_process_txt.py
-│   ├── generate_embeddings.py
-│   └── generate_contact_map.py
-├── 3_model/                  # Model code
-│   ├── args.py               # Hyperparameters (modify paths here)
-│   ├── data_loader.py        # Contact map → DGL graph
-│   ├── GARPepPI.py           # Model definition
-│   ├── main.py               # Entry point
-│   ├── seq2tensor.py         # Embedding dictionary
-│   ├── train_and_validation.py
-│   └── utils.py
-└── 4_results/                # Output (created at runtime)
-```
+A dual-branch multimodal collaborative learning framework for PepPI prediction, combining ProtT5 sequence embeddings, residue contact maps, TAGCN graph convolutions, and TextCNN.
 
 ---
 
-## Setup
+<p align="center">
+  <img src="assets/GARPepPI.svg" alt="GARPepPI Architecture" width="700"/>
+  <br>
+  <em>Figure 1. Overall architecture of GARPepPI.</em>
+</p>
 
-### 1. Download ProtT5 Embedding Model
+---
 
-Download from HuggingFace:
+## Installation
 
-```
-https://huggingface.co/Rostlab/prot_t5_xl_half_uniref50-enc/tree/main
-```
+### Requirements
 
-Download all files (`config.json`, `pytorch_model.bin`, `special_tokens_map.json`, `spiece.model`, `tokenizer_config.json`) into:
+| Dependency | Version |
+|---|---|
+| Python | 3.7+ |
+| PyTorch | ≥ 1.5.1 |
+| DGL | ≥ 0.6.1 |
+| CUDA | 10.1+ |
+| scikit-learn | latest |
 
-```
-2_preprocessing/prot_t5_xl_half_uniref50-enc/
-```
-
-### 2. Install Dependencies
+### Install Commands
 
 ```bash
-pip install torch dgl numpy pandas scipy openpyxl selfies xlwt scikit-learn
-```
+# PyTorch (CUDA 10.1)
+conda install pytorch==1.5.1 torchvision==0.6.1 cudatoolkit=10.1 -c pytorch
 
-> DGL installation varies by CUDA version. Refer to https://www.dgl.ai/pages/start.html
+# DGL for CUDA 10.1
+pip install dgl_cu101 -f https://www.dgl.ai/pages/start.html
+
+# Other dependencies
+pip install numpy pandas scipy openpyxl xlwt selfies scikit-learn transformers
+```
 
 ---
 
 ## Data Preparation
 
-Each dataset in `1_database/` contains two files:
+### Dataset Format
 
-| File | Format | Content |
+Each dataset should contain two files:
+
+| File | Format | Example |
 |---|---|---|
-| `{name}.dictionary.tsv` | `ID\tsequence` | Protein/peptide sequences |
-| `{name}.actions.{N}-{N}.tsv` | `ID1\tID2\tlabel` | Interaction pairs |
+| `{name}.dictionary.tsv` | `ID\tsequence` | `1a1m_A\tMKTVRQERLK...` |
+| `{name}.actions.{pos}-{neg}.tsv` | `ID1\tID2\tlabel` | `1a1m_A\t1a1m_C\t1` |
 
-### Step 1 — Generate Embeddings
+### Step 1 — Generate ProtT5 Embeddings
 
-```python
-# generate_embeddings.py
-python generate_embeddings.py
+Edit the input FASTA path in `2_preprocessing/generate_embeddings.py`, then run:
+
+```bash
+python 2_preprocessing/generate_embeddings.py
 ```
-- Requires: `1_database/{name}.dictionary.tsv`
-- Output: `embeddings/{name}_embeddings.npz`
-- Loads ProtT5 from `2_preprocessing/prot_t5_xl_half_uniref50-enc/`
+
+- Output: `embeddings/{name}_embeddings.npz` (shape `L × 1024` per entry)
 
 ### Step 2 — Generate Contact Maps
 
-```python
-# generate_contact_map.py
-python generate_contact_map.py
+Edit the PDB file paths in `2_preprocessing/generate_contact_map.py`, then run:
+
+```bash
+python 2_preprocessing/generate_contact_map.py
 ```
-- Requires: `1_database/{name}.dictionary.tsv`
-- Output: `contact_map/{name}_contact_map/*.npz`
+
+- Output: `contact_map/{name}_contact_map/*.npz` (shape `L × L` per entry)
 
 ---
 
@@ -92,46 +78,75 @@ python generate_contact_map.py
 
 ### 1. Configure Paths
 
-Edit `3_model/args.py`:
+Edit `3_model/args.py` with your actual paths:
 
 ```python
-# === Output paths ===
+# === Output ===
 rst_file        = '/path/to/results/result.tsv'
 pkl_path        = '/path/to/model_pkl/model_1.0'
-test_5fold_path = '/path/to/results/train_5fold_cross_validation/'
+test_5fold_path = '/path/to/results/train_5fold/'
 
-# === Data paths ===
+# === Data ===
 actions_file = '/path/to/{name}.actions.{N}-{N}.tsv'
-cmaproot      = '/path/to/contact_map/{name}_contact_map/'
-embed_data    = np.load("/path/to/{name}_embeddings.npz", allow_pickle=True)
+cmaproot     = '/path/to/contact_map/{name}_contact_map/'
+embed_data   = np.load("/path/to/{name}_embeddings.npz", allow_pickle=True)
 ```
 
-### 2. Run Training
+### 2. Run 5-Fold Cross-Validation
 
 ```bash
 cd 3_model
 python main.py
 ```
 
-Training performs 5-fold stratified cross-validation. Best model per fold (highest validation accuracy) is saved to `model_pkl/`. Test results per fold are saved as `.xls` files.
+Each fold's best model (highest validation accuracy) is saved to `model_pkl/`. Per-fold test predictions are exported as `.xls` files.
 
 ---
 
 ## Model Architecture
 
-**GARPepPI** combines two modalities:
+**GARPepPI** (Graph Attention Residual Peptide-Protein Interaction Predictor) employs a dual-branch multimodal collaborative learning architecture. Peptide and protein sequences are processed by identical sequence-structure dual-branch networks with shared weights.
 
-1. **Graph branch**: Contact map → DGL graph → TAGConv (k=2) → MaxPooling
-2. **Sequence branch**: ProtT5 embedding → 3-layer 1D CNN (TextCNN)
+### Sequence Modality
 
-Features are fused via a learnable weighted sum + gated interaction + residual connection, then passed through a 3-layer MLP for binary classification.
+Per-residue embeddings from **ProtT5** are fed into a **TextCNN** (3-layer 1D convolutional network) to produce fixed-dimensional representations.
+
+- ProtT5 embedding model: [Rostlab/prot_t5_xl_half_uniref50-enc](https://huggingface.co/Rostlab/prot_t5_xl_half_uniref50-enc)
+
+### Structure Modality
+
+Residue contact maps derived from PDB files are encoded by a **Topology Adaptive Graph Convolutional Network (TAGCN)** to capture spatial topology via adjacency matrices.
+
+### Fusion Mechanism
+
+The two modalities are integrated through a **residual gated progressive fusion** mechanism:
+
+1. **Intra-molecular fusion**: Sequence and structure features are first merged via static weighted fusion with learnable parameters
+2. **Inter-molecular fusion**: Peptide and protein representations are adaptively fused by a dynamic gating unit with residual connections
+3. **Prediction**: A multilayer perceptron outputs the final interaction probability
 
 ---
 
-## Citation
+## Input & Output
 
-If this work is useful, please cite:
+### Input Format
 
-```
-TODO: add your paper citation here
-```
+| Field | Description |
+|---|---|
+| receptor | Protein ID (must exist in embeddings and contact map) |
+| peptide | Peptide ID |
+| label | `1` = interacting, `0` = non-interacting |
+
+### Output Format
+
+| Field | Description |
+|---|---|
+| index | Sample index |
+| receptor | Protein ID |
+| peptide | Peptide ID |
+| label | Ground truth |
+| predict_score | Interaction probability (0–1) |
+| predict_label | Prediction (`1` if score ≥ 0.5) |
+
+---
+

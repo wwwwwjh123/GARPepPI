@@ -1,8 +1,6 @@
-# TPepPro
+# GARPepPI
 
-**GARPepPI: Graph Attention Residual Peptide-Protein Interaction Predictor**
-
-A dual-branch multimodal collaborative learning framework for PepPI prediction, combining ProtT5 sequence embeddings, residue contact maps, TAGCN graph convolutions, and TextCNN.
+**Graph Attention Residual Peptide-Protein Interaction Predictor**
 
 ---
 
@@ -43,8 +41,6 @@ pip install numpy pandas scipy openpyxl xlwt selfies scikit-learn transformers
 
 ## Data Preparation
 
-### Dataset Format
-
 Each dataset should contain two files:
 
 | File | Format | Example |
@@ -54,23 +50,31 @@ Each dataset should contain two files:
 
 ### Step 1 — Generate ProtT5 Embeddings
 
-Edit the input FASTA path in `2_preprocessing/generate_embeddings.py`, then run:
+Download the ProtT5 model from HuggingFace:
+
+```
+https://huggingface.co/Rostlab/prot_t5_xl_half_uniref50-enc/tree/main
+```
+
+Download all files (`config.json`, `pytorch_model.bin`, `special_tokens_map.json`, `spiece.model`, `tokenizer_config.json`) into `2_preprocessing/prot_t5_xl_half_uniref50-enc/`.
+
+Then edit the FASTA path in `2_preprocessing/generate_embeddings.py` and run:
 
 ```bash
 python 2_preprocessing/generate_embeddings.py
 ```
 
-- Output: `embeddings/{name}_embeddings.npz` (shape `L × 1024` per entry)
+Output: `embeddings/{name}_embeddings.npz` (shape `L × 1024` per entry)
 
 ### Step 2 — Generate Contact Maps
 
-Edit the PDB file paths in `2_preprocessing/generate_contact_map.py`, then run:
+Edit the PDB file paths in `2_preprocessing/generate_contact_map.py` and run:
 
 ```bash
 python 2_preprocessing/generate_contact_map.py
 ```
 
-- Output: `contact_map/{name}_contact_map/*.npz` (shape `L × L` per entry)
+Output: `contact_map/{name}_contact_map/*.npz` (shape `L × L` per entry)
 
 ---
 
@@ -99,31 +103,7 @@ cd 3_model
 python main.py
 ```
 
-Each fold's best model (highest validation accuracy) is saved to `model_pkl/`. Per-fold test predictions are exported as `.xls` files.
-
----
-
-## Model Architecture
-
-**GARPepPI** (Graph Attention Residual Peptide-Protein Interaction Predictor) employs a dual-branch multimodal collaborative learning architecture. Peptide and protein sequences are processed by identical sequence-structure dual-branch networks with shared weights.
-
-### Sequence Modality
-
-Per-residue embeddings from **ProtT5** are fed into a **TextCNN** (3-layer 1D convolutional network) to produce fixed-dimensional representations.
-
-- ProtT5 embedding model: [Rostlab/prot_t5_xl_half_uniref50-enc](https://huggingface.co/Rostlab/prot_t5_xl_half_uniref50-enc)
-
-### Structure Modality
-
-Residue contact maps derived from PDB files are encoded by a **Topology Adaptive Graph Convolutional Network (TAGCN)** to capture spatial topology via adjacency matrices.
-
-### Fusion Mechanism
-
-The two modalities are integrated through a **residual gated progressive fusion** mechanism:
-
-1. **Intra-molecular fusion**: Sequence and structure features are first merged via static weighted fusion with learnable parameters
-2. **Inter-molecular fusion**: Peptide and protein representations are adaptively fused by a dynamic gating unit with residual connections
-3. **Prediction**: A multilayer perceptron outputs the final interaction probability
+The best model for each fold (highest validation accuracy) is saved to `model_pkl/`. Per-fold test predictions are exported as `.xls` files.
 
 ---
 
@@ -150,3 +130,8 @@ The two modalities are integrated through a **residual gated progressive fusion*
 
 ---
 
+## Citation
+
+```
+TODO: add your paper citation here
+```

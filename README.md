@@ -1,6 +1,6 @@
 # GARPepPI
 
-**Graph Attention Residual Peptide-Protein Interaction Predictor**
+**A dual-branch multimodal collaborative learning framework for PepPI prediction**
 
 ---
 

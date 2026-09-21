@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Model checkpoints
+*.pkl
+*.pth
+*.pt
+*.ckpt
+
+# Data (generated at runtime)
+*.npz
+*.npy
+
+# Results
+results/
+model_pkl/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# ProtT5 model files (download separately)
+prot_t5_xl_half_uniref50-enc/
